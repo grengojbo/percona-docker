@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM centos:7
 
 LABEL org.opencontainers.image.authors="info@percona.com"
 
@@ -6,14 +6,8 @@ RUN groupadd -g 1000 mysql
 RUN useradd -u 1000 -r -g 1000 -s /sbin/nologin \
   -c "Default Application User" mysql
 
-# install exact version of PS for repeatability
-ENV PERCONA_VERSION 5.7.30-33.1.el7
-
 # check repository package signature in secure way
 RUN set -ex; \
-  microdnf update -y && rm -rf /var/cache/yum \
-  microdnf install yum -y; \
-  yum module disable mysql; \
   export GNUPGHOME="$(mktemp -d)"; \
   gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys 430BDF5C56E7C94E848EE60C1C4CBDCDCD2EFD2A; \
   gpg --batch --export --armor 430BDF5C56E7C94E848EE60C1C4CBDCDCD2EFD2A > ${GNUPGHOME}/RPM-GPG-KEY-Percona; \
@@ -24,21 +18,24 @@ RUN set -ex; \
   rm -rf "$GNUPGHOME" /tmp/percona-release.rpm; \
   rpm --import /etc/pki/rpm-gpg/PERCONA-PACKAGING-KEY; \
   percona-release disable all; \
-  percona-release enable original release; \
-  \
+  percona-release enable original release
+
+# install exact version of PS for repeatability
+ENV PERCONA_VERSION 5.7.30-33.1.el7
+
+RUN set -ex; \
   yum install -y \
   Percona-Server-server-57-${PERCONA_VERSION} \
-  Percona-Server-devel-57-${PERCONA_VERSION} \
-  Percona-Server-tokudb-57-${PERCONA_VERSION} \
-  Percona-Server-rocksdb-57-${PERCONA_VERSION} \
+  #Percona-Server-devel-57-${PERCONA_VERSION} \
+  #Percona-Server-tokudb-57-${PERCONA_VERSION} \
+  #Percona-Server-rocksdb-57-${PERCONA_VERSION} \
+  \
   jemalloc \
   openssl \
   which \
   policycoreutils; \
   \
   yum clean all; \
-  microdnf remove yum -y; \
-  microdnf clean all -y; \
   rm -rf /var/cache/yum /var/lib/mysql
 
 # purge and re-create /var/lib/mysql with appropriate ownership
